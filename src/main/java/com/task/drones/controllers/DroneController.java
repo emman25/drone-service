@@ -30,15 +30,15 @@ public class DroneController {
         return droneService.load(request, loadDroneRequestDto);
     }
 
-//    @GetMapping("/check-load")
-//    public DroneResponseDto checkLoadDrone(HttpServletRequest request, @RequestBody LoadDroneRequestDto loadDroneRequestDto) throws Exception {
-//        return droneService.addDrone(request, droneRequestDto);
-//    }
-//
-//    @GetMapping("/check-available")
-//    public DroneResponseDto checkAvailableDrones(HttpServletRequest request, @RequestBody DroneRequestDto droneRequestDto) throws Exception {
-//        return droneService.addDrone(request, droneRequestDto);
-//    }
+    @GetMapping("/check-load")
+    public GenericDataResponseEntity checkLoadDrones(HttpServletRequest request, @RequestParam("serial") String serial) throws Exception {
+        return droneService.availableLoadMedication(request, serial);
+    }
+
+    @GetMapping("/check-available")
+    public GenericDataResponseEntity checkAvailableDrones(HttpServletRequest request) throws Exception {
+        return droneService.availableDrones(request);
+    }
 
     @GetMapping("/battery")
     public GenericDataResponseEntity checkBatteryDrones(HttpServletRequest request, @RequestParam("serial") String serial) throws Exception {

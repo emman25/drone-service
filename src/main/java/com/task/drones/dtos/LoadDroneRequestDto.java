@@ -9,10 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DroneRequestDto {
+public class LoadDroneRequestDto {
     private String serialNumber;
-    private String model;
-    private int weightLimit;
-    private Double batteryCapacity;
-    private String state;
+    private String medicationCode;
 }

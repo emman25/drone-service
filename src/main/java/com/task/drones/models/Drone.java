@@ -20,7 +20,7 @@ public class Drone {
     private Model model;
 
     @Column(name = "weight_limit")
-    private String weightLimit;
+    private int weightLimit;
 
     @Column(name = "battery_capacity")
     private Double batteryCapacity;

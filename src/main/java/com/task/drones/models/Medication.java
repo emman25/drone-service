@@ -23,6 +23,6 @@ public class Medication {
     private String image;
 
     @ManyToOne
-    @JoinColumn(name="drones_serial", nullable=false)
+    @JoinColumn(name="drones_serial", nullable=true)
     private Drone drone;
 }

@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @Entity
@@ -25,5 +27,8 @@ public class Drone {
 
     @OneToOne(fetch = FetchType.EAGER)
     private State state;
+
+    @OneToMany(mappedBy = "drone", fetch = FetchType.LAZY)
+    private Set<Medication> medication;
 
 }

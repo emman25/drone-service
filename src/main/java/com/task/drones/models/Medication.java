@@ -1,9 +1,6 @@
 package com.task.drones.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,4 +21,8 @@ public class Medication {
 
     @Column(name = "image")
     private String image;
+
+    @ManyToOne
+    @JoinColumn(name="drones_serial", nullable=false)
+    private Drone drone;
 }

@@ -3,8 +3,8 @@ package com.task.drones;
 import com.task.drones.models.Model;
 import com.task.drones.models.State;
 import com.task.drones.repositories.DroneRepository;
-import com.task.drones.repositories.ModelsRepository;
-import com.task.drones.repositories.StatesRepository;
+import com.task.drones.repositories.ModelRepository;
+import com.task.drones.repositories.StateRepository;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +21,10 @@ public class DroneServiceApplication implements CommandLineRunner {
     DroneRepository droneRepository;
 
     @Autowired
-    StatesRepository statesRepository;
+    StateRepository stateRepository;
 
     @Autowired
-    ModelsRepository modelsRepository;
+    ModelRepository modelRepository;
 
     Logger logger = LoggerFactory.getLogger(DroneServiceApplication.class);
     public static void main(String[] args) {
@@ -38,31 +38,31 @@ public class DroneServiceApplication implements CommandLineRunner {
 
     @Override
     public void run(String... params) throws Exception {
-        long numberOfModels = modelsRepository.count();
-        long numberOfStates = statesRepository.count();
+        long numberOfModels = modelRepository.count();
+        long numberOfStates = stateRepository.count();
 
         if (numberOfModels == 0) {
             Model lightweight = new Model();
             lightweight.setName("Lightweight");
-            modelsRepository.save(lightweight);
+            modelRepository.save(lightweight);
 
             logger.info("Lightweight model created");
 
             Model middleweight = new Model();
             middleweight.setName("Middleweight");
-            modelsRepository.save(middleweight);
+            modelRepository.save(middleweight);
 
             logger.info("Middleweight model created");
 
             Model cruiserweight = new Model();
             cruiserweight.setName("Cruiserweight");
-            modelsRepository.save(cruiserweight);
+            modelRepository.save(cruiserweight);
 
             logger.info("Cruiserweight model created");
 
             Model heavyweight = new Model();
             heavyweight.setName("Heavyweight");
-            modelsRepository.save(heavyweight);
+            modelRepository.save(heavyweight);
 
             logger.info("Heavyweight model created");
         }
@@ -70,37 +70,37 @@ public class DroneServiceApplication implements CommandLineRunner {
         if (numberOfStates == 0){
             State idle = new State();
             idle.setName("IDLE");
-            statesRepository.save(idle);
+            stateRepository.save(idle);
 
             logger.info("IDLE state created");
 
             State loading = new State();
             loading.setName("LOADING");
-            statesRepository.save(loading);
+            stateRepository.save(loading);
 
             logger.info("LOADING state created");
 
             State loaded = new State();
             loaded.setName("LOADED");
-            statesRepository.save(loaded);
+            stateRepository.save(loaded);
 
             logger.info("LOADED state created");
 
             State delivering = new State();
             delivering.setName("DELIVERING");
-            statesRepository.save(delivering);
+            stateRepository.save(delivering);
 
             logger.info("DELIVERING state created");
 
             State delivered = new State();
             delivered.setName("DELIVERED");
-            statesRepository.save(delivered);
+            stateRepository.save(delivered);
 
             logger.info("DELIVERED state created");
 
             State returning = new State();
             returning.setName("RETURNING");
-            statesRepository.save(returning);
+            stateRepository.save(returning);
 
             logger.info("RETURNING state created");
         }

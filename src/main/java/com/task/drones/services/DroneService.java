@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -105,26 +106,32 @@ public class DroneService {
             Medication medication = medicationRepository.findByCode(loadDroneRequestDto.getMedicationCode());
             Drone drone = droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber());
 
-//            List<Medication> medications = medicationRepository.findAllByDrone(loadDroneRequestDto.getSerialNumber());
-            //count weight of all medications
-//            double totalWeight = medications.stream().mapToDouble(Medication::getWeight).sum();
+            if(Objects.equals(drone.getState().getName(), "LOADED")){
+                return new GenericDataResponseEntity("Drone is full");
+            }
 
-//            if (totalWeight + medication.getWeight() > drone.getBatteryCapacity()){
-//                return new GenericDataResponseEntity("Drone is full");
-//            }
+            if (drone.getBatteryCapacity() < 25){
+                return new GenericDataResponseEntity("Drone is low on battery");
+            }
+
+            List<Medication> medications = medicationRepository.findAllByDrone(droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber()));
+            double totalWeight = medications.stream().mapToDouble(Medication::getWeight).sum();
+
+            if (totalWeight + medication.getWeight() > drone.getBatteryCapacity()){
+                drone.setState(stateRepository.findByName("LOADED"));
+                return new GenericDataResponseEntity("Drone is full");
+            }
 
             medication.setDrone(drone);
 
-//            medications = medicationRepository.findAllByDrone(loadDroneRequestDto.getSerialNumber());
+            medications = medicationRepository.findAllByDrone(droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber()));
 
-//            List<LoadDroneResponseDto> listOfMedications = medications
-//                    .stream()
-//                    .map(medication1 -> modelMapper.map(medication1, LoadDroneResponseDto.class)).toList();
-////            return modelMapper.map(savedMedication, LoadDroneResponseDto.class);
-//
-//            return new GenericDataResponseEntity(listOfMedications);
+            List<LoadDroneResponseDto> listOfMedications = medications
+                    .stream()
+                    .map(medication1 -> modelMapper.map(medication1, LoadDroneResponseDto.class)).toList();
 
-            return new GenericDataResponseEntity("Medication loaded successfully");
+            return new GenericDataResponseEntity(listOfMedications);
+
         } catch (Exception e){
             throw new Exception(e.getLocalizedMessage());
         }

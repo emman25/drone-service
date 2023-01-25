@@ -10,5 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DroneResponseDto {
     private String serialNumber;
-    private Model model;
+    private String model;
+    private int weightLimit;
+    private Double batteryCapacity;
+    private String state;
 }

@@ -1,6 +1,7 @@
 package com.task.drones.services;
 
 import com.task.drones.dtos.*;
+import com.task.drones.exception.CustomException;
 import com.task.drones.models.Drone;
 import com.task.drones.models.Medication;
 import com.task.drones.models.Model;
@@ -14,6 +15,7 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -39,52 +41,59 @@ public class DroneService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public DroneResponseDto addDrone(HttpServletRequest request, DroneRequestDto droneRequestDto) throws Exception {
-        try{
-            Drone drone = new Drone();
-            if (droneRequestDto.getSerialNumber().length() > 100){
-                throw new Exception("Serial number cannot be more than 100");
-            }
+    public MessageResponseDto addDrone(HttpServletRequest request, DroneRequestDto droneRequestDto) {
 
-            Model model = modelRepository.findByName(droneRequestDto.getModel().substring(0, 1).toUpperCase() + droneRequestDto.getModel().substring(1).toLowerCase());
-            if (model == null){
-                throw new Exception("Model not found");
-            }
-
-            if(droneRequestDto.getWeightLimit() > 500){
-                throw new Exception("Weight limit cannot be more than 500");
-            }
-
-            State state = stateRepository.findByName(droneRequestDto.getState().toUpperCase());
-            if (state == null){
-                throw new Exception("State not found");
-            }
-
-            drone.setSerialNumber(droneRequestDto.getSerialNumber());
-            drone.setModel(model);
-            drone.setBatteryCapacity(droneRequestDto.getBatteryCapacity());
-            drone.setWeightLimit(droneRequestDto.getWeightLimit());
-            drone.setState(state);
-
-            Drone savedDrone = droneRepository.save(drone);
-
-            logger.info("Drone registration request completed");
-
-            return modelMapper.map(savedDrone, DroneResponseDto.class);
-        } catch (Exception e){
-            throw new Exception(e.getLocalizedMessage());
+        Drone found = droneRepository.findBySerialNumber(droneRequestDto.getSerialNumber());
+        if (found != null) {
+            throw new CustomException("Drone with serial number " + droneRequestDto.getSerialNumber() + " already exists", HttpStatus.BAD_REQUEST);
         }
+
+        Drone drone = new Drone();
+        if (droneRequestDto.getSerialNumber().length() > 100) {
+            throw new CustomException("Serial number cannot be more than 100 characters long", HttpStatus.BAD_REQUEST);
+        }
+
+        Model model = modelRepository.findByName(droneRequestDto.getModel().substring(0, 1).toUpperCase() + droneRequestDto.getModel().substring(1).toLowerCase());
+        if (model == null) {
+            throw new CustomException("Model not found", HttpStatus.BAD_REQUEST);
+        }
+
+        if (droneRequestDto.getWeightLimit() > 500) {
+            logger.info("Weight limit cannot be more than 500 grams " + HttpStatus.BAD_REQUEST.value());
+            throw new CustomException("Weight limit cannot be more than 500 grams", HttpStatus.BAD_REQUEST);
+        }
+
+        State state = stateRepository.findByName(droneRequestDto.getState().toUpperCase());
+        if (state == null) {
+            throw new CustomException("State not found", HttpStatus.BAD_REQUEST);
+        }
+
+        drone.setSerialNumber(droneRequestDto.getSerialNumber());
+        drone.setModel(model);
+        drone.setBatteryCapacity(droneRequestDto.getBatteryCapacity());
+        drone.setWeightLimit(droneRequestDto.getWeightLimit());
+        drone.setState(state);
+
+        Drone savedDrone = droneRepository.save(drone);
+
+        logger.info("Drone registration request completed");
+
+        MessageResponseDto messageResponseDto = new MessageResponseDto();
+        messageResponseDto.setMessage("Drone with serial number " + savedDrone.getSerialNumber() + " successfully registered");
+        messageResponseDto.setCode(HttpStatus.OK.value());
+
+        return modelMapper.map(messageResponseDto, MessageResponseDto.class);
     }
 
     public MedicationResponseDto createMedication(HttpServletRequest request, MedicationRequestDto medicationRequestDto) throws Exception {
-        try{
+        try {
             Medication medication = new Medication();
 
-            if (!medicationRequestDto.getCode().matches("^[A-Z0-9_]*$")){
+            if (!medicationRequestDto.getCode().matches("^[A-Z0-9_]*$")) {
                 throw new Exception("Medication code can only contain upper case letters, numbers and ‘_’");
             }
 
-            if (!medicationRequestDto.getName().matches("^[a-zA-Z0-9_-]*$")){
+            if (!medicationRequestDto.getName().matches("^[a-zA-Z0-9_-]*$")) {
                 throw new Exception("Medication code can only contain letters, numbers, ‘-‘, ‘_’");
             }
 
@@ -96,96 +105,118 @@ public class DroneService {
             Medication savedMedication = medicationRepository.save(medication);
 
             return modelMapper.map(savedMedication, MedicationResponseDto.class);
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new Exception(e.getLocalizedMessage());
         }
     }
 
-    public GenericDataResponseEntity load(HttpServletRequest request, LoadDroneRequestDto loadDroneRequestDto) throws Exception {
-        try{
-            Medication medication = medicationRepository.findByCode(loadDroneRequestDto.getMedicationCode());
-            Drone drone = droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber());
+    public MessageResponseDto load(HttpServletRequest request, LoadDroneRequestDto loadDroneRequestDto) {
 
-            if(Objects.equals(drone.getState().getName(), "LOADED")){
-                return new GenericDataResponseEntity("Drone is full");
-            }
-
-            if (drone.getBatteryCapacity() < 25){
-                return new GenericDataResponseEntity("Drone is low on battery");
-            }
-
-            List<Medication> medications = medicationRepository.findAllByDrone(droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber()));
-            double totalWeight = medications.stream().mapToDouble(Medication::getWeight).sum();
-
-            if (totalWeight + medication.getWeight() > drone.getBatteryCapacity()){
-                drone.setState(stateRepository.findByName("LOADED"));
-                return new GenericDataResponseEntity("Drone is full");
-            }
-
-            medication.setDrone(drone);
-
-            medications = medicationRepository.findAllByDrone(droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber()));
-
-            List<LoadDroneResponseDto> listOfMedications = medications
-                    .stream()
-                    .map(medication1 -> modelMapper.map(medication1, LoadDroneResponseDto.class)).toList();
-
-            return new GenericDataResponseEntity(listOfMedications);
-
-        } catch (Exception e){
-            throw new Exception(e.getLocalizedMessage());
+        Drone drone = droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber());
+        logger.info("Drone found: " + drone);
+        if (drone == null) {
+            throw new CustomException("Drone not found", HttpStatus.BAD_REQUEST);
         }
+
+        Medication medication = medicationRepository.findByCode(loadDroneRequestDto.getMedicationCode());
+        logger.info("Medication found: " + medication);
+        if (medication == null) {
+            throw new CustomException("Medication not found", HttpStatus.BAD_REQUEST);
+        }
+
+        if (medication.getDrone() != null) {
+            throw new CustomException("Medication already loaded", HttpStatus.BAD_REQUEST);
+        }
+
+        if (drone.getState().getName().equals("LOADED")) {
+            throw new CustomException("Drone is loaded", HttpStatus.BAD_REQUEST);
+        }
+
+        if (drone.getBatteryCapacity() >= 25) {
+            drone.setState(stateRepository.findByName("LOADING"));
+            droneRepository.save(drone);
+        }
+
+        if (!drone.getState().getName().equals("LOADING")) {
+            throw new CustomException("Drone is not in loading state", HttpStatus.BAD_REQUEST);
+        }
+
+        List<Medication> medications = medicationRepository.findAllByDrone(droneRepository.findBySerialNumber(loadDroneRequestDto.getSerialNumber()));
+        logger.info("Medications found: " + medications.size());
+
+        double totalWeight = medications.stream().mapToDouble(Medication::getWeight).sum();
+        logger.info("Total weight: " + totalWeight);
+
+        if (totalWeight + medication.getWeight() > drone.getWeightLimit()) {
+            throw new CustomException("Drone cannot load medication as it exceeds its carrying capacity", HttpStatus.BAD_REQUEST);
+        }
+
+        medication.setDrone(drone);
+        medicationRepository.save(medication);
+
+        MessageResponseDto responseDto = new MessageResponseDto();
+        responseDto.setMessage("Medication successfully loaded");
+        responseDto.setCode(HttpStatus.OK.value());
+
+        return modelMapper.map(responseDto, MessageResponseDto.class);
     }
 
-    public GenericDataResponseEntity batteryLevel(HttpServletRequest request, String serial) throws Exception {
-        try{
-            Drone drone = droneRepository.findBySerialNumber(serial);
+    public MessageResponsePayloadDto batteryLevel(HttpServletRequest request, String serial) {
+        logger.info("Battery level request received for drone with serial number " + serial);
+        Drone drone = droneRepository.findBySerialNumber(serial);
 
-            if (drone == null){
-                return new GenericDataResponseEntity("Drone not found");
-            }
-
-            return new GenericDataResponseEntity(drone.getBatteryCapacity());
-        } catch (Exception e){
-            throw new Exception(e.getLocalizedMessage());
+        if (drone == null) {
+            throw new CustomException("Drone not found", HttpStatus.BAD_REQUEST);
         }
+
+        MessageResponsePayloadDto responseDto = new MessageResponsePayloadDto();
+        responseDto.setMessage("Battery level for drone with serial number " + serial);
+        responseDto.setCode(HttpStatus.OK.value());
+        responseDto.setPayload(drone.getBatteryCapacity());
+
+        return modelMapper.map(responseDto, MessageResponsePayloadDto.class);
     }
 
-    public GenericDataResponseEntity availableDrones(HttpServletRequest request) throws Exception {
-        try{
-            State state = stateRepository.findByName("IDLE");
-            List<Drone> drone = droneRepository.findAllByState(state);
+    public MessageResponsePayloadDto availableDrones(HttpServletRequest request) {
 
-            if (drone == null){
-                return new GenericDataResponseEntity("No drone available");
-            }
-
-            List<DroneResponseDto> listOfDrones = drone
-                    .stream()
-                    .map(drone1 -> modelMapper.map(drone1, DroneResponseDto.class)).toList();
-
-            return new GenericDataResponseEntity(listOfDrones);
-        } catch (Exception e){
-            throw new Exception(e.getLocalizedMessage());
+        State state = stateRepository.findByName("IDLE");
+        List<Drone> drone = droneRepository.findAllByState(state);
+        if (drone.size() == 0){
+            throw new CustomException("No drones available", HttpStatus.BAD_REQUEST);
         }
+
+        List<DroneResponseDto> listOfDrones = drone
+                .stream()
+                .filter(drone1 -> drone1.getBatteryCapacity() >= 25)
+                .map(drone1 -> modelMapper.map(drone1, DroneResponseDto.class)).toList();
+
+        MessageResponsePayloadDto responseDto = new MessageResponsePayloadDto();
+        responseDto.setMessage("Success");
+        responseDto.setCode(HttpStatus.OK.value());
+        responseDto.setPayload(listOfDrones);
+        return modelMapper.map(responseDto, MessageResponsePayloadDto.class);
+
     }
 
-    public GenericDataResponseEntity availableLoadMedication(HttpServletRequest request, String serial) throws Exception {
-        try{
-            Drone drone = droneRepository.findBySerialNumber(serial);
+    public MessageResponsePayloadDto checkLoadedMedicationDrone(HttpServletRequest request, String serial) {
 
-            if (drone == null){
-                return new GenericDataResponseEntity("No drone available");
-            }
+        Drone drone = droneRepository.findBySerialNumber(serial);
 
-            List<Medication> medications = medicationRepository.findAllByDrone(drone);
-            List<LoadDroneResponseDto> listOfMedications = medications
-                    .stream()
-                    .map(medication -> modelMapper.map(medication, LoadDroneResponseDto.class)).toList();
-
-            return new GenericDataResponseEntity(listOfMedications);
-        } catch (Exception e){
-            throw new Exception(e.getLocalizedMessage());
+        if (drone == null) {
+            throw new CustomException("Drone not found", HttpStatus.BAD_REQUEST);
         }
+
+        List<Medication> medications = medicationRepository.findAllByDrone(drone);
+        List<MedicationResponseDto> listOfMedications = medications
+                .stream()
+                .map(medication -> modelMapper.map(medication, MedicationResponseDto.class)).toList();
+
+        MessageResponsePayloadDto responseDto = new MessageResponsePayloadDto();
+        responseDto.setMessage("Success");
+        responseDto.setCode(HttpStatus.OK.value());
+        responseDto.setPayload(listOfMedications);
+
+        return modelMapper.map(responseDto, MessageResponsePayloadDto.class);
+
     }
 }

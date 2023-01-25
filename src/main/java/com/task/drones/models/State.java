@@ -17,4 +17,8 @@ public class State {
     @Column(name = "name")
     private String name;
 
+    @Override
+    public String toString() {
+        return getName();
+    }
 }
